@@ -1,12 +1,6 @@
 {
-  "name": "word-chain-worker",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
-  },
-  "devDependencies": {
-    "wrangler": "^4.112.0"
-  }
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "word-chain",
+  "main": "./src/index.js",
+  "compatibility_date": "2026-07-19"
 }
