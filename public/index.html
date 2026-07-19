@@ -16,6 +16,7 @@
       --border: #3a3a3c;
       --used: #3a3a3c;
       --keyboard: #818384;
+      --disabled: #242426;
       --yellow: #b59f3b;
       --green: #538d4e;
       --white: #ffffff;
@@ -95,7 +96,7 @@
 
     .status-panel {
       width: 100%;
-      min-height: 102px;
+      min-height: 105px;
       text-align: center;
     }
 
@@ -175,11 +176,6 @@
       background: var(--yellow);
     }
 
-    .tile.correct {
-      border-color: var(--green);
-      background: var(--green);
-    }
-
     .keyboard {
       width: 100%;
       margin-top: auto;
@@ -205,6 +201,10 @@
       font-weight: 800;
       cursor: pointer;
       user-select: none;
+      transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        opacity 0.15s ease;
     }
 
     .key.large {
@@ -218,10 +218,19 @@
 
     .key.selected {
       background: var(--yellow);
+      color: var(--white);
     }
 
-    .key:active {
+    .key:active:not(:disabled) {
       transform: scale(0.96);
+    }
+
+    .key:disabled {
+      background: var(--disabled);
+      color: #555558;
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .restart-button {
@@ -303,7 +312,7 @@
       }
 
       .status-panel {
-        min-height: 92px;
+        min-height: 95px;
       }
 
       .tile {
@@ -405,19 +414,22 @@
       <h2>遊び方</h2>
 
       <p>
-        表示された頭文字から始まる、
-        5文字の英単語を入力してください。
+        最初は、表示された頭文字から始まる
+        5文字の英単語を自由に入力します。
       </p>
 
       <p>
-        ENTERを押すと英単語を確認します。
-        正しい英単語なら、コンピューターが
-        その単語の中から次の頭文字を1つ選びます。
+        2語目以降は、ウェブから取得した英単語の中から
+        使用できる単語が内部で絞られます。
       </p>
 
       <p>
-        黄色になった文字が、
-        次の単語の頭文字です。
+        入力途中で単語を作れない文字は暗くなり、
+        押せなくなります。候補の単語自体は表示されません。
+      </p>
+
+      <p>
+        黄色になった文字が、次の単語の頭文字です。
         6個つなげるとゲームクリアです。
       </p>
 
@@ -435,6 +447,12 @@
     const API_URL = "/api/words";
     const ROWS = 6;
     const COLUMNS = 5;
+
+    /*
+      2語目以降に内部で用意する候補数
+      3にすると難しく、6にすると少し簡単になります。
+    */
+    const LIMITED_WORD_COUNT = 5;
 
     const KEYBOARD_ROWS = [
       [
@@ -487,7 +505,20 @@
     let currentRow = 0;
     let currentInput = "";
     let requiredLetter = "";
+
     let usedWords = [];
+
+    /*
+      画面には表示しない候補単語
+    */
+    let hiddenCandidates = [];
+
+    /*
+      false：最初の単語
+      true：2語目以降
+    */
+    let chainStarted = false;
+
     let gameFinished = false;
     let loading = false;
 
@@ -550,15 +581,12 @@
 
           tile.className = "tile";
           tile.dataset.row = String(row);
-          tile.dataset.column =
-            String(column);
+          tile.dataset.column = String(column);
 
           rowElement.appendChild(tile);
         }
 
-        boardElement.appendChild(
-          rowElement
-        );
+        boardElement.appendChild(rowElement);
       }
     }
 
@@ -569,8 +597,7 @@
         const rowElement =
           document.createElement("div");
 
-        rowElement.className =
-          "keyboard-row";
+        rowElement.className = "keyboard-row";
 
         row.forEach(keyValue => {
           const button =
@@ -606,6 +633,8 @@
           rowElement
         );
       });
+
+      updateKeyboardAvailability();
     }
 
     function getTile(row, column) {
@@ -641,15 +670,19 @@
           Boolean(letter)
         );
       }
+
+      updateKeyboardAvailability();
     }
 
     function setLoading(text) {
       loading = true;
       setMessage(text, "loading");
+      updateKeyboardAvailability();
     }
 
     function finishLoading() {
       loading = false;
+      updateKeyboardAvailability();
     }
 
     async function fetchWords(letter) {
@@ -730,6 +763,133 @@
       return null;
     }
 
+    async function prepareHiddenCandidates(
+      letter
+    ) {
+      const words =
+        await fetchWords(letter);
+
+      const availableWords =
+        words.filter(word =>
+          !usedWords.includes(word)
+        );
+
+      if (
+        availableWords.length === 0
+      ) {
+        hiddenCandidates = [];
+        return false;
+      }
+
+      hiddenCandidates =
+        shuffle(availableWords).slice(
+          0,
+          Math.min(
+            LIMITED_WORD_COUNT,
+            availableWords.length
+          )
+        );
+
+      return hiddenCandidates.length > 0;
+    }
+
+    /*
+      現在の入力文字列の続きとして
+      押せる英文字だけを取得
+    */
+    function getAllowedNextLetters() {
+      /*
+        1語目は自由入力
+      */
+      if (!chainStarted) {
+        return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+          .split("");
+      }
+
+      if (
+        hiddenCandidates.length === 0
+      ) {
+        return [];
+      }
+
+      const letters = new Set();
+
+      hiddenCandidates.forEach(word => {
+        if (
+          word.startsWith(currentInput) &&
+          currentInput.length < COLUMNS
+        ) {
+          letters.add(
+            word[currentInput.length]
+          );
+        }
+      });
+
+      return [...letters];
+    }
+
+    /*
+      現在の入力が完成した隠し候補か確認
+    */
+    function isCompleteHiddenCandidate() {
+      return hiddenCandidates.includes(
+        currentInput
+      );
+    }
+
+    function updateKeyboardAvailability() {
+      const allowedLetters =
+        getAllowedNextLetters();
+
+      document
+        .querySelectorAll(".key")
+        .forEach(button => {
+          const key =
+            button.dataset.key;
+
+          if (key === "BACKSPACE") {
+            button.disabled =
+              loading ||
+              gameFinished ||
+              currentInput.length === 0;
+
+            return;
+          }
+
+          if (key === "ENTER") {
+            if (chainStarted) {
+              button.disabled =
+                loading ||
+                gameFinished ||
+                currentInput.length !== 5 ||
+                !isCompleteHiddenCandidate();
+            } else {
+              button.disabled =
+                loading ||
+                gameFinished ||
+                currentInput.length !== 5;
+            }
+
+            return;
+          }
+
+          if (
+            !/^[A-Z]$/.test(key)
+          ) {
+            return;
+          }
+
+          button.disabled =
+            loading ||
+            gameFinished ||
+            currentInput.length >= 5 ||
+            (
+              chainStarted &&
+              !allowedLetters.includes(key)
+            );
+        });
+    }
+
     async function prepareFirstRound() {
       setLoading(
         "英単語を準備しています…"
@@ -754,9 +914,9 @@
       finishLoading();
 
       setMessage(
-        "「" +
+        "最初は「" +
           requiredLetter +
-          "」から始まる5文字の英単語を入力してください。",
+          "」から始まる5文字英単語を自由に入力してください。",
         "success"
       );
     }
@@ -767,6 +927,30 @@
         gameFinished ||
         currentInput.length >= COLUMNS
       ) {
+        return;
+      }
+
+      if (chainStarted) {
+        const allowedLetters =
+          getAllowedNextLetters();
+
+        if (
+          !allowedLetters.includes(letter)
+        ) {
+          return;
+        }
+      } else if (
+        currentInput.length === 0 &&
+        letter !== requiredLetter
+      ) {
+        setMessage(
+          "最初の文字は「" +
+            requiredLetter +
+            "」です。",
+          "error"
+        );
+
+        shakeCurrentRow();
         return;
       }
 
@@ -804,9 +988,7 @@
         return;
       }
 
-      if (
-        className === "selected"
-      ) {
+      if (className === "selected") {
         key.classList.remove("used");
         key.classList.add("selected");
       } else if (
@@ -820,9 +1002,7 @@
 
     function shakeCurrentRow() {
       const row =
-        boardElement.children[
-          currentRow
-        ];
+        boardElement.children[currentRow];
 
       if (!row) {
         return;
@@ -911,6 +1091,21 @@
         return;
       }
 
+      if (
+        chainStarted &&
+        !hiddenCandidates.includes(
+          currentInput
+        )
+      ) {
+        setMessage(
+          "押せる文字を順番に選んで単語を完成させてください。",
+          "error"
+        );
+
+        shakeCurrentRow();
+        return;
+      }
+
       setLoading(
         "英単語を確認しています…"
       );
@@ -951,10 +1146,38 @@
             )
           ];
 
-        const nextLetter =
+        let nextLetter =
           await findPlayableLetter(
             possibleLetters
           );
+
+        if (!nextLetter) {
+          nextLetter =
+            await findPlayableLetter(
+              COMMON_START_LETTERS
+            );
+        }
+
+        if (!nextLetter) {
+          finishGame(
+            "続けられる英単語が見つかりませんでした。"
+          );
+
+          return;
+        }
+
+        const candidatesPrepared =
+          await prepareHiddenCandidates(
+            nextLetter
+          );
+
+        if (!candidatesPrepared) {
+          finishGame(
+            "続けられる英単語が見つかりませんでした。"
+          );
+
+          return;
+        }
 
         for (
           let column = 0;
@@ -1011,36 +1234,19 @@
           return;
         }
 
-        if (!nextLetter) {
-          const backupLetter =
-            await findPlayableLetter(
-              COMMON_START_LETTERS
-            );
-
-          if (!backupLetter) {
-            finishGame(
-              "続けられる英単語が見つかりませんでした。"
-            );
-
-            return;
-          }
-
-          requiredLetter =
-            backupLetter;
-        } else {
-          requiredLetter =
-            nextLetter;
-        }
+        chainStarted = true;
+        requiredLetter = nextLetter;
 
         requiredLetterElement.textContent =
           requiredLetter;
 
         finishLoading();
+        updateCurrentRow();
 
         setMessage(
           "次は「" +
             requiredLetter +
-            "」から始まる5文字の英単語です。",
+            "」から始まります。押せる文字だけで単語を完成させてください。",
           "success"
         );
       } catch (error) {
@@ -1095,6 +1301,8 @@
 
       restartButton.style.display =
         "block";
+
+      updateKeyboardAvailability();
     }
 
     async function startGame() {
@@ -1102,6 +1310,8 @@
       currentInput = "";
       requiredLetter = "";
       usedWords = [];
+      hiddenCandidates = [];
+      chainStarted = false;
       gameFinished = false;
       loading = false;
 
@@ -1142,7 +1352,19 @@
 
         if (key === "ENTER") {
           event.preventDefault();
-          handleKey("ENTER");
+
+          const enterButton =
+            keyboardElement.querySelector(
+              '.key[data-key="ENTER"]'
+            );
+
+          if (
+            enterButton &&
+            !enterButton.disabled
+          ) {
+            handleKey("ENTER");
+          }
+
           return;
         }
 
@@ -1150,14 +1372,38 @@
           key === "BACKSPACE"
         ) {
           event.preventDefault();
-          handleKey("BACKSPACE");
+
+          const backspaceButton =
+            keyboardElement.querySelector(
+              '.key[data-key="BACKSPACE"]'
+            );
+
+          if (
+            backspaceButton &&
+            !backspaceButton.disabled
+          ) {
+            handleKey("BACKSPACE");
+          }
+
           return;
         }
 
         if (
           /^[A-Z]$/.test(key)
         ) {
-          handleKey(key);
+          const letterButton =
+            keyboardElement.querySelector(
+              '.key[data-key="' +
+                key +
+                '"]'
+            );
+
+          if (
+            letterButton &&
+            !letterButton.disabled
+          ) {
+            handleKey(key);
+          }
         }
       }
     );
@@ -1203,8 +1449,7 @@
       "click",
       event => {
         if (
-          event.target ===
-          helpOverlay
+          event.target === helpOverlay
         ) {
           helpOverlay.classList.remove(
             "visible"
