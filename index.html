@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>5文字英単語チェーン</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: #f3f5f7;
+      color: #2d3436;
+      text-align: center;
+    }
+
+    .game {
+      width: min(560px, 100%);
+      margin: 0 auto;
+      padding: 24px;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(24px, 5vw, 32px);
+    }
+
+    .rule {
+      padding: 15px;
+      border-radius: 12px;
+      background: #edf5ff;
+      line-height: 1.7;
+    }
+
+    .letter-label {
+      margin-top: 10px;
+      color: #57606f;
+      font-size: 14px;
+    }
+
+    #requiredLetter {
+      margin-top: 2px;
+      color: #2878d0;
+      font-size: 40px;
+      font-weight: 700;
+    }
+
+    .choices-area {
+      margin: 18px 0;
+      padding: 15px;
+      border-radius: 12px;
+      background: #fff4d7;
+    }
+
+    #choiceList {
+      min-height: 56px;
+      margin-top: 10px;
+    }
+
+    .word-button {
+      margin: 5px;
+      padding: 11px 17px;
+      border: 2px solid #d4ae51;
+      border-radius: 9px;
+      background: #fff;
+      color: #333;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .word-button:hover,
+    .word-button.selected {
+      background: #ffe8a8;
+    }
+
+    .input-area {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 18px 0;
+    }
+
+    input {
+      width: 165px;
+      padding: 11px;
+      border: 2px solid #a4b0be;
+      border-radius: 9px;
+      font-size: 21px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .main-button {
+      padding: 11px 18px;
+      border: 0;
+      border-radius: 9px;
+      background: #2878d0;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .main-button:disabled,
+    input:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    #message {
+      min-height: 52px;
+      margin-top: 10px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+
+    .loading { color: #2878d0; }
+    .error { color: #c0392b; }
+    .success { color: #218c74; }
+
+    .history-area {
+      margin-top: 18px;
+      padding-top: 15px;
+      border-top: 1px solid #dfe4ea;
+    }
+
+    #historyList { margin-top: 10px; }
+
+    .history-word {
+      display: inline-block;
+      margin: 4px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      background: #e8ebef;
+      font-weight: 700;
+    }
+
+    #restartButton {
+      display: none;
+      margin: 18px auto 0;
+      background: #57606f;
+    }
+
+    .small-note {
+      margin-top: 15px;
+      color: #747d8c;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .game { padding: 18px; }
+
+      .input-area {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      input { width: 100%; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="game">
+    <h1>5文字英単語チェーン</h1>
+
+    <div class="rule">
+      表示された5文字の英単語から1つ選びます。<br>
+      コンピューターが、その単語に含まれる文字から<br>
+      次の頭文字を自動で決めます。
+
+      <div class="letter-label">今回の頭文字</div>
+      <div id="requiredLetter">－</div>
+    </div>
+
+    <section class="choices-area">
+      <strong>使用できる単語</strong>
+      <div id="choiceList"></div>
+    </section>
+
+    <div class="input-area">
+      <input
+        id="wordInput"
+        type="text"
+        maxlength="5"
+        placeholder="APPLE"
+        autocomplete="off"
+        disabled
+      >
+      <button id="submitButton" class="main-button" type="button" disabled>
+        決定
+      </button>
+    </div>
+
+    <div id="message" aria-live="polite"></div>
+
+    <section class="history-area">
+      <strong>これまでに選んだ単語</strong>
+      <div id="historyList"></div>
+    </section>
+
+    <button id="restartButton" class="main-button" type="button">
+      最初から遊ぶ
+    </button>
+
+    <div class="small-note">
+      Cloudflare Pages Functionsの <code>/api/words</code> から英単語を取得します。
+    </div>
+  </main>
+
+  <script>
+    const API_URL = "/api/words";
+    const ALL_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+    const requiredLetterElement = document.getElementById("requiredLetter");
+    const choiceList = document.getElementById("choiceList");
+    const input = document.getElementById("wordInput");
+    const submitButton = document.getElementById("submitButton");
+    const restartButton = document.getElementById("restartButton");
+    const message = document.getElementById("message");
+    const historyList = document.getElementById("historyList");
+
+    let requiredLetter = "";
+    let currentChoices = [];
+    let usedWords = [];
+    let gameFinished = false;
+    let loading = false;
+
+    const wordCache = new Map();
+
+    function shuffle(array) {
+      const result = [...array];
+
+      for (let i = result.length - 1; i > 0; i--) {
+        const randomIndex = Math.floor(Math.random() * (i + 1));
+        [result[i], result[randomIndex]] = [result[randomIndex], result[i]];
+      }
+
+      return result;
+    }
+
+    function randomItem(array) {
+      return array[Math.floor(Math.random() * array.length)];
+    }
+
+    function setMessage(text, className = "") {
+      message.textContent = text;
+      message.className = className;
+    }
+
+    function setLoading(text) {
+      loading = true;
+      input.disabled = true;
+      submitButton.disabled = true;
+      choiceList.innerHTML = "";
+      setMessage(text, "loading");
+    }
+
+    function finishLoading() {
+      loading = false;
+      input.disabled = false;
+      submitButton.disabled = false;
+      input.focus();
+    }
+
+    async function fetchFiveLetterWords(letter) {
+      const upperLetter = letter.toUpperCase();
+
+      if (wordCache.has(upperLetter)) {
+        return wordCache.get(upperLetter);
+      }
+
+      const response = await fetch(
+        `${API_URL}?letter=${encodeURIComponent(upperLetter)}`,
+        {
+          method: "GET",
+          headers: { "Accept": "application/json" }
+        }
+      );
+
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || `単語の取得に失敗しました（${response.status}）`
+        );
+      }
+
+      const words = Array.isArray(data.words)
+        ? data.words
+            .map(word => String(word).toUpperCase())
+            .filter(word =>
+              /^[A-Z]{5}$/.test(word) &&
+              word.startsWith(upperLetter)
+            )
+        : [];
+
+      const uniqueWords = [...new Set(words)];
+      wordCache.set(upperLetter, uniqueWords);
+
+      return uniqueWords;
+    }
+
+    async function createChoices(letter) {
+      const foundWords = await fetchFiveLetterWords(letter);
+
+      const unusedWords = foundWords.filter(
+        word => !usedWords.includes(word)
+      );
+
+      if (unusedWords.length < 2) {
+        return [];
+      }
+
+      const numberOfChoices =
+        unusedWords.length >= 3 && Math.random() < 0.7 ? 3 : 2;
+
+      return shuffle(unusedWords).slice(0, numberOfChoices);
+    }
+
+    async function createFirstRound() {
+      const letters = shuffle(ALL_LETTERS);
+
+      for (const letter of letters) {
+        const choices = await createChoices(letter);
+
+        if (choices.length >= 2) {
+          requiredLetter = letter;
+          currentChoices = choices;
+          requiredLetterElement.textContent = requiredLetter;
+
+          showChoices();
+          finishLoading();
+          setMessage("表示された単語から1つ選んでください。", "success");
+          return;
+        }
+      }
+
+      throw new Error("使用できる5文字の英単語を取得できませんでした。");
+    }
+
+    function showChoices() {
+      choiceList.innerHTML = "";
+
+      currentChoices.forEach(word => {
+        const button = document.createElement("button");
+
+        button.type = "button";
+        button.className = "word-button";
+        button.textContent = word;
+
+        button.addEventListener("click", () => {
+          if (gameFinished || loading) return;
+
+          input.value = word;
+
+          document.querySelectorAll(".word-button").forEach(item => {
+            item.classList.remove("selected");
+          });
+
+          button.classList.add("selected");
+          input.focus();
+        });
+
+        choiceList.appendChild(button);
+      });
+    }
+
+    function showHistory() {
+      historyList.innerHTML = "";
+
+      usedWords.forEach(word => {
+        const element = document.createElement("span");
+        element.className = "history-word";
+        element.textContent = word;
+        historyList.appendChild(element);
+      });
+    }
+
+    async function chooseNextRound(selectedWord) {
+      const letters = shuffle([...new Set(selectedWord.split(""))]);
+      const possibleRounds = [];
+
+      for (const letter of letters) {
+        const choices = await createChoices(letter);
+
+        if (choices.length >= 2) {
+          possibleRounds.push({ letter, choices });
+        }
+      }
+
+      if (possibleRounds.length === 0) {
+        for (const letter of shuffle(ALL_LETTERS)) {
+          const choices = await createChoices(letter);
+
+          if (choices.length >= 2) {
+            possibleRounds.push({ letter, choices });
+            break;
+          }
+        }
+      }
+
+      if (possibleRounds.length === 0) {
+        finishGame("続けられる単語が見つかりませんでした。");
+        return;
+      }
+
+      const nextRound = randomItem(possibleRounds);
+
+      requiredLetter = nextRound.letter;
+      currentChoices = nextRound.choices;
+      requiredLetterElement.textContent = requiredLetter;
+
+      showChoices();
+      finishLoading();
+
+      setMessage(
+        `コンピューターが「${requiredLetter}」を選びました。` +
+        `「${requiredLetter}」から始まる単語を選んでください。`,
+        "success"
+      );
+    }
+
+    async function submitWord() {
+      if (gameFinished || loading) return;
+
+      const selectedWord = input.value.trim().toUpperCase();
+
+      if (!/^[A-Z]{5}$/.test(selectedWord)) {
+        setMessage("5文字の英単語を選んでください。", "error");
+        return;
+      }
+
+      if (!currentChoices.includes(selectedWord)) {
+        setMessage(
+          "表示されている2〜3個の単語から選んでください。",
+          "error"
+        );
+        return;
+      }
+
+      usedWords.push(selectedWord);
+      showHistory();
+      input.value = "";
+
+      setLoading(
+        `${selectedWord}に含まれる文字から、次の英単語を検索しています…`
+      );
+
+      try {
+        await chooseNextRound(selectedWord);
+      } catch (error) {
+        console.error(error);
+        finishGame(error.message || "英単語を取得できませんでした。");
+      }
+    }
+
+    function finishGame(text) {
+      gameFinished = true;
+      loading = false;
+      input.disabled = true;
+      submitButton.disabled = true;
+      choiceList.innerHTML = "";
+      setMessage(text, "error");
+      restartButton.style.display = "block";
+    }
+
+    async function startGame() {
+      requiredLetter = "";
+      currentChoices = [];
+      usedWords = [];
+      gameFinished = false;
+      loading = false;
+
+      input.value = "";
+      historyList.innerHTML = "";
+      choiceList.innerHTML = "";
+      requiredLetterElement.textContent = "－";
+      restartButton.style.display = "none";
+
+      setLoading("最初の5文字英単語を取得しています…");
+
+      try {
+        await createFirstRound();
+      } catch (error) {
+        console.error(error);
+        finishGame(error.message || "英単語を取得できませんでした。");
+      }
+    }
+
+    submitButton.addEventListener("click", submitWord);
+
+    input.addEventListener("keydown", event => {
+      if (event.key === "Enter") submitWord();
+    });
+
+    input.addEventListener("input", () => {
+      input.value = input.value
+        .replace(/[^a-zA-Z]/g, "")
+        .toUpperCase()
+        .slice(0, 5);
+    });
+
+    restartButton.addEventListener("click", startGame);
+
+    startGame();
+  </script>
+</body>
+</html>
