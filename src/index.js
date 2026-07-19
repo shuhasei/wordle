@@ -1,1021 +1,3 @@
-const HTML = `<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
-  >
-
-  <title>Word Chain</title>
-
-  <style>
-    :root {
-      --background: #121213;
-      --tile-border: #3a3a3c;
-      --tile-used: #3a3a3c;
-      --keyboard: #818384;
-      --keyboard-used: #3a3a3c;
-      --yellow: #b59f3b;
-      --green: #538d4e;
-      --white: #ffffff;
-      --muted: #a9a9aa;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      margin: 0;
-      min-height: 100%;
-      background: var(--background);
-      color: var(--white);
-      font-family:
-        Arial,
-        "Helvetica Neue",
-        "Hiragino Kaku Gothic ProN",
-        "Yu Gothic",
-        sans-serif;
-    }
-
-    body {
-      overflow-x: hidden;
-    }
-
-    button,
-    input {
-      font: inherit;
-    }
-
-    button {
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .app {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .top-bar {
-      height: 58px;
-      display: grid;
-      grid-template-columns: 48px 1fr 48px;
-      align-items: center;
-      padding: 0 12px;
-      border-bottom: 1px solid #3a3a3c;
-    }
-
-    .menu-button,
-    .help-button {
-      width: 42px;
-      height: 42px;
-      border: 0;
-      background: transparent;
-      color: var(--white);
-      font-size: 26px;
-      cursor: pointer;
-    }
-
-    .title {
-      margin: 0;
-      font-size: 27px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      text-align: center;
-    }
-
-    .game-area {
-      width: min(100%, 540px);
-      margin: 0 auto;
-      padding: 12px 12px 20px;
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .status-panel {
-      width: 100%;
-      min-height: 92px;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-
-    .required-label {
-      margin-top: 2px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .required-letter {
-      margin-top: 2px;
-      color: var(--yellow);
-      font-size: 34px;
-      font-weight: 800;
-    }
-
-    .message {
-      min-height: 24px;
-      margin-top: 5px;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.5;
-    }
-
-    .message.error {
-      color: #ff7675;
-    }
-
-    .message.success {
-      color: #73c276;
-    }
-
-    .message.loading {
-      color: #d6c66a;
-    }
-
-    .board {
-      display: grid;
-      grid-template-rows: repeat(6, 1fr);
-      gap: 5px;
-      margin: 2px auto 16px;
-    }
-
-    .board-row {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 5px;
-    }
-
-    .tile {
-      width: 62px;
-      height: 62px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid var(--tile-border);
-      background: transparent;
-      color: var(--white);
-      font-size: 32px;
-      font-weight: 800;
-      text-transform: uppercase;
-      user-select: none;
-    }
-
-    .tile.filled {
-      border-color: #565758;
-      animation: pop 0.08s ease-in-out;
-    }
-
-    .tile.used {
-      border-color: var(--tile-used);
-      background: var(--tile-used);
-    }
-
-    .tile.selected-letter {
-      border-color: var(--yellow);
-      background: var(--yellow);
-    }
-
-    .tile.correct {
-      border-color: var(--green);
-      background: var(--green);
-    }
-
-    .choices {
-      width: 100%;
-      min-height: 52px;
-      margin-bottom: 12px;
-      text-align: center;
-    }
-
-    .choices-title {
-      margin-bottom: 6px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .choice-button {
-      min-width: 88px;
-      margin: 3px;
-      padding: 9px 12px;
-      border: 1px solid #565758;
-      border-radius: 5px;
-      background: #2f2f31;
-      color: var(--white);
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      cursor: pointer;
-    }
-
-    .choice-button:hover {
-      background: #474749;
-    }
-
-    .choice-button.active {
-      border-color: var(--yellow);
-      background: var(--yellow);
-    }
-
-    .keyboard {
-      width: 100%;
-      margin-top: auto;
-      padding-top: 4px;
-    }
-
-    .keyboard-row {
-      display: flex;
-      justify-content: center;
-      gap: 6px;
-      margin: 0 auto 8px;
-    }
-
-    .key {
-      height: 58px;
-      min-width: 43px;
-      padding: 0 5px;
-      border: 0;
-      border-radius: 4px;
-      background: var(--keyboard);
-      color: var(--white);
-      font-size: 15px;
-      font-weight: 800;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .key.large {
-      min-width: 66px;
-      font-size: 12px;
-    }
-
-    .key.used {
-      background: var(--keyboard-used);
-    }
-
-    .key.selected {
-      background: var(--yellow);
-    }
-
-    .key:active {
-      transform: scale(0.96);
-    }
-
-    .restart-button {
-      display: none;
-      margin: 3px auto 14px;
-      padding: 11px 22px;
-      border: 0;
-      border-radius: 5px;
-      background: var(--green);
-      color: var(--white);
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 20;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.72);
-    }
-
-    .overlay.visible {
-      display: flex;
-    }
-
-    .dialog {
-      width: min(420px, 100%);
-      padding: 24px;
-      border: 1px solid #565758;
-      border-radius: 10px;
-      background: #1f1f20;
-      box-shadow: 0 12px 45px rgba(0, 0, 0, 0.45);
-    }
-
-    .dialog h2 {
-      margin-top: 0;
-    }
-
-    .dialog p {
-      color: #d7d7d7;
-      line-height: 1.7;
-    }
-
-    .dialog-close {
-      padding: 9px 18px;
-      border: 0;
-      border-radius: 5px;
-      background: var(--keyboard);
-      color: var(--white);
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    @keyframes pop {
-      0% {
-        transform: scale(0.92);
-      }
-
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @media (max-width: 520px) {
-      .top-bar {
-        height: 52px;
-      }
-
-      .title {
-        font-size: 22px;
-      }
-
-      .game-area {
-        padding: 7px 7px 12px;
-      }
-
-      .status-panel {
-        min-height: 80px;
-      }
-
-      .tile {
-        width: min(15.8vw, 58px);
-        height: min(15.8vw, 58px);
-        font-size: 27px;
-      }
-
-      .keyboard-row {
-        gap: 4px;
-        margin-bottom: 6px;
-      }
-
-      .key {
-        min-width: 0;
-        flex: 1;
-        height: 54px;
-        padding: 0 2px;
-        font-size: 13px;
-      }
-
-      .key.large {
-        flex: 1.45;
-        min-width: 0;
-        font-size: 10px;
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <div class="app">
-    <header class="top-bar">
-      <button
-        id="menuButton"
-        class="menu-button"
-        type="button"
-        aria-label="最初から遊ぶ"
-      >
-        ☰
-      </button>
-
-      <h1 class="title">WORD CHAIN</h1>
-
-      <button
-        id="helpButton"
-        class="help-button"
-        type="button"
-        aria-label="遊び方"
-      >
-        ?
-      </button>
-    </header>
-
-    <main class="game-area">
-      <section class="status-panel">
-        <div class="required-label">
-          次の単語の頭文字
-        </div>
-
-        <div id="requiredLetter" class="required-letter">
-          －
-        </div>
-
-        <div id="message" class="message" aria-live="polite"></div>
-      </section>
-
-      <div id="board" class="board" aria-label="ゲームボード"></div>
-
-      <section id="choices" class="choices">
-        <div class="choices-title">
-          使用できる5文字英単語
-        </div>
-
-        <div id="choiceButtons"></div>
-      </section>
-
-      <button
-        id="restartButton"
-        class="restart-button"
-        type="button"
-      >
-        もう一度遊ぶ
-      </button>
-
-      <section id="keyboard" class="keyboard"></section>
-    </main>
-  </div>
-
-  <div id="helpOverlay" class="overlay">
-    <div class="dialog">
-      <h2>遊び方</h2>
-
-      <p>
-        表示された2〜3個の英単語から、1つ選んで入力します。
-        ENTERを押すと、コンピューターが単語に含まれる文字を
-        1つ選びます。
-      </p>
-
-      <p>
-        黄色になった文字が、次の単語の頭文字です。
-        6回つなげるとゲームクリアです。
-      </p>
-
-      <button id="closeHelp" class="dialog-close" type="button">
-        閉じる
-      </button>
-    </div>
-  </div>
-
-  <script>
-    const API_URL = "/api/words";
-    const ROWS = 6;
-    const COLUMNS = 5;
-
-    const KEYBOARD_ROWS = [
-      ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-      ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-      ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "BACKSPACE"]
-    ];
-
-    const COMMON_START_LETTERS = [
-      "A", "B", "C", "D", "E", "F", "G", "H",
-      "L", "M", "P", "R", "S", "T", "W"
-    ];
-
-    const boardElement =
-      document.getElementById("board");
-
-    const keyboardElement =
-      document.getElementById("keyboard");
-
-    const requiredLetterElement =
-      document.getElementById("requiredLetter");
-
-    const messageElement =
-      document.getElementById("message");
-
-    const choiceButtonsElement =
-      document.getElementById("choiceButtons");
-
-    const restartButton =
-      document.getElementById("restartButton");
-
-    const menuButton =
-      document.getElementById("menuButton");
-
-    const helpButton =
-      document.getElementById("helpButton");
-
-    const helpOverlay =
-      document.getElementById("helpOverlay");
-
-    const closeHelp =
-      document.getElementById("closeHelp");
-
-    let currentRow = 0;
-    let currentInput = "";
-    let requiredLetter = "";
-    let currentChoices = [];
-    let usedWords = [];
-    let gameFinished = false;
-    let loading = false;
-
-    const cache = new Map();
-
-    function shuffle(array) {
-      const result = [...array];
-
-      for (let index = result.length - 1; index > 0; index--) {
-        const randomIndex =
-          Math.floor(Math.random() * (index + 1));
-
-        [result[index], result[randomIndex]] =
-          [result[randomIndex], result[index]];
-      }
-
-      return result;
-    }
-
-    function setMessage(text, type = "") {
-      messageElement.textContent = text;
-      messageElement.className = "message";
-
-      if (type) {
-        messageElement.classList.add(type);
-      }
-    }
-
-    function createBoard() {
-      boardElement.innerHTML = "";
-
-      for (let row = 0; row < ROWS; row++) {
-        const rowElement = document.createElement("div");
-        rowElement.className = "board-row";
-        rowElement.dataset.row = String(row);
-
-        for (let column = 0; column < COLUMNS; column++) {
-          const tile = document.createElement("div");
-
-          tile.className = "tile";
-          tile.dataset.row = String(row);
-          tile.dataset.column = String(column);
-
-          rowElement.appendChild(tile);
-        }
-
-        boardElement.appendChild(rowElement);
-      }
-    }
-
-    function createKeyboard() {
-      keyboardElement.innerHTML = "";
-
-      KEYBOARD_ROWS.forEach(row => {
-        const rowElement = document.createElement("div");
-        rowElement.className = "keyboard-row";
-
-        row.forEach(keyValue => {
-          const button = document.createElement("button");
-
-          button.type = "button";
-          button.className = "key";
-          button.dataset.key = keyValue;
-
-          if (keyValue === "ENTER") {
-            button.textContent = "ENTER";
-            button.classList.add("large");
-          } else if (keyValue === "BACKSPACE") {
-            button.textContent = "⌫";
-            button.classList.add("large");
-          } else {
-            button.textContent = keyValue;
-          }
-
-          button.addEventListener("click", () => {
-            handleKey(keyValue);
-          });
-
-          rowElement.appendChild(button);
-        });
-
-        keyboardElement.appendChild(rowElement);
-      });
-    }
-
-    function getTile(row, column) {
-      return boardElement.querySelector(
-        '.tile[data-row="' + row + '"][data-column="' + column + '"]'
-      );
-    }
-
-    function updateCurrentRow() {
-      for (let column = 0; column < COLUMNS; column++) {
-        const tile = getTile(currentRow, column);
-        const letter = currentInput[column] || "";
-
-        tile.textContent = letter;
-        tile.classList.toggle("filled", Boolean(letter));
-      }
-    }
-
-    function setLoading(text) {
-      loading = true;
-      setMessage(text, "loading");
-
-      document
-        .querySelectorAll(".choice-button")
-        .forEach(button => {
-          button.disabled = true;
-        });
-    }
-
-    function finishLoading() {
-      loading = false;
-    }
-
-    async function fetchWords(letter) {
-      const upperLetter = letter.toUpperCase();
-
-      if (cache.has(upperLetter)) {
-        return cache.get(upperLetter);
-      }
-
-      const response = await fetch(
-        API_URL + "?letter=" + encodeURIComponent(upperLetter)
-      );
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-          "英単語を取得できませんでした。"
-        );
-      }
-
-      const words = Array.isArray(data.words)
-        ? data.words
-            .map(word => String(word).toUpperCase())
-            .filter(word => {
-              return (
-                /^[A-Z]{5}$/.test(word) &&
-                word.startsWith(upperLetter)
-              );
-            })
-        : [];
-
-      const uniqueWords = [...new Set(words)];
-
-      cache.set(upperLetter, uniqueWords);
-
-      return uniqueWords;
-    }
-
-    async function createChoices(letter) {
-      const words = await fetchWords(letter);
-
-      const unusedWords = words.filter(word => {
-        return !usedWords.includes(word);
-      });
-
-      if (unusedWords.length < 2) {
-        return [];
-      }
-
-      const choiceCount =
-        unusedWords.length >= 3 ? 3 : 2;
-
-      return shuffle(unusedWords).slice(0, choiceCount);
-    }
-
-    function showChoices() {
-      choiceButtonsElement.innerHTML = "";
-
-      currentChoices.forEach(word => {
-        const button = document.createElement("button");
-
-        button.type = "button";
-        button.className = "choice-button";
-        button.textContent = word;
-
-        button.addEventListener("click", () => {
-          if (loading || gameFinished) {
-            return;
-          }
-
-          currentInput = word;
-          updateCurrentRow();
-
-          document
-            .querySelectorAll(".choice-button")
-            .forEach(item => {
-              item.classList.remove("active");
-            });
-
-          button.classList.add("active");
-        });
-
-        choiceButtonsElement.appendChild(button);
-      });
-    }
-
-    async function prepareFirstRound() {
-      setLoading("英単語を検索しています…");
-
-      for (const letter of shuffle(COMMON_START_LETTERS)) {
-        const choices = await createChoices(letter);
-
-        if (choices.length >= 2) {
-          requiredLetter = letter;
-          currentChoices = choices;
-
-          requiredLetterElement.textContent =
-            requiredLetter;
-
-          showChoices();
-          finishLoading();
-
-          setMessage(
-            "表示された単語から1つ選んでください。",
-            "success"
-          );
-
-          return;
-        }
-      }
-
-      throw new Error(
-        "使用できる英単語が見つかりませんでした。"
-      );
-    }
-
-    function addLetter(letter) {
-      if (
-        loading ||
-        gameFinished ||
-        currentInput.length >= COLUMNS
-      ) {
-        return;
-      }
-
-      currentInput += letter;
-      updateCurrentRow();
-    }
-
-    function removeLetter() {
-      if (
-        loading ||
-        gameFinished ||
-        currentInput.length === 0
-      ) {
-        return;
-      }
-
-      currentInput =
-        currentInput.slice(0, currentInput.length - 1);
-
-      updateCurrentRow();
-    }
-
-    function markKeyboardLetter(letter, className) {
-      const key = keyboardElement.querySelector(
-        '.key[data-key="' + letter + '"]'
-      );
-
-      if (!key) {
-        return;
-      }
-
-      if (className === "selected") {
-        key.classList.remove("used");
-        key.classList.add("selected");
-      } else if (!key.classList.contains("selected")) {
-        key.classList.add(className);
-      }
-    }
-
-    async function submitWord() {
-      if (loading || gameFinished) {
-        return;
-      }
-
-      if (currentInput.length !== 5) {
-        setMessage(
-          "5文字の英単語を入力してください。",
-          "error"
-        );
-
-        return;
-      }
-
-      if (!currentChoices.includes(currentInput)) {
-        setMessage(
-          "表示されている単語から選んでください。",
-          "error"
-        );
-
-        return;
-      }
-
-      const selectedWord = currentInput;
-
-      usedWords.push(selectedWord);
-
-      const possibleLetters = [
-        ...new Set(selectedWord.split(""))
-      ];
-
-      setLoading("次の文字を決めています…");
-
-      let nextRound = null;
-
-      for (const letter of shuffle(possibleLetters)) {
-        const choices = await createChoices(letter);
-
-        if (choices.length >= 2) {
-          nextRound = {
-            letter,
-            choices
-          };
-
-          break;
-        }
-      }
-
-      if (!nextRound) {
-        for (
-          const letter of shuffle(COMMON_START_LETTERS)
-        ) {
-          const choices = await createChoices(letter);
-
-          if (choices.length >= 2) {
-            nextRound = {
-              letter,
-              choices
-            };
-
-            break;
-          }
-        }
-      }
-
-      if (!nextRound) {
-        finishGame(
-          "続けられる英単語が見つかりませんでした。"
-        );
-
-        return;
-      }
-
-      const selectedLetter = nextRound.letter;
-
-      for (let column = 0; column < COLUMNS; column++) {
-        const tile = getTile(currentRow, column);
-        const letter = selectedWord[column];
-
-        tile.classList.remove("filled");
-
-        if (letter === selectedLetter) {
-          tile.classList.add("selected-letter");
-          markKeyboardLetter(letter, "selected");
-        } else {
-          tile.classList.add("used");
-          markKeyboardLetter(letter, "used");
-        }
-      }
-
-      currentRow += 1;
-      currentInput = "";
-
-      if (currentRow >= ROWS) {
-        finishGame(
-          "ゲームクリア！6個の英単語をつなげました。",
-          true
-        );
-
-        return;
-      }
-
-      requiredLetter = nextRound.letter;
-      currentChoices = nextRound.choices;
-
-      requiredLetterElement.textContent =
-        requiredLetter;
-
-      showChoices();
-      finishLoading();
-
-      setMessage(
-        "次は「" +
-          requiredLetter +
-          "」から始まる単語です。",
-        "success"
-      );
-    }
-
-    function handleKey(key) {
-      if (key === "ENTER") {
-        submitWord();
-        return;
-      }
-
-      if (key === "BACKSPACE") {
-        removeLetter();
-        return;
-      }
-
-      if (/^[A-Z]$/.test(key)) {
-        addLetter(key);
-      }
-    }
-
-    function finishGame(text, success = false) {
-      gameFinished = true;
-      loading = false;
-
-      choiceButtonsElement.innerHTML = "";
-      requiredLetterElement.textContent = "✓";
-
-      setMessage(
-        text,
-        success ? "success" : "error"
-      );
-
-      restartButton.style.display = "block";
-    }
-
-    async function startGame() {
-      currentRow = 0;
-      currentInput = "";
-      requiredLetter = "";
-      currentChoices = [];
-      usedWords = [];
-      gameFinished = false;
-      loading = false;
-
-      requiredLetterElement.textContent = "－";
-      restartButton.style.display = "none";
-      choiceButtonsElement.innerHTML = "";
-
-      createBoard();
-      createKeyboard();
-
-      try {
-        await prepareFirstRound();
-      } catch (error) {
-        console.error(error);
-
-        finishGame(
-          error.message ||
-          "ゲームを開始できませんでした。"
-        );
-      }
-    }
-
-    document.addEventListener("keydown", event => {
-      if (event.ctrlKey || event.altKey || event.metaKey) {
-        return;
-      }
-
-      const key = event.key.toUpperCase();
-
-      if (key === "ENTER") {
-        event.preventDefault();
-        handleKey("ENTER");
-        return;
-      }
-
-      if (key === "BACKSPACE") {
-        event.preventDefault();
-        handleKey("BACKSPACE");
-        return;
-      }
-
-      if (/^[A-Z]$/.test(key)) {
-        handleKey(key);
-      }
-    });
-
-    restartButton.addEventListener("click", startGame);
-
-    menuButton.addEventListener("click", () => {
-      const shouldRestart = window.confirm(
-        "最初からゲームをやり直しますか？"
-      );
-
-      if (shouldRestart) {
-        startGame();
-      }
-    });
-
-    helpButton.addEventListener("click", () => {
-      helpOverlay.classList.add("visible");
-    });
-
-    closeHelp.addEventListener("click", () => {
-      helpOverlay.classList.remove("visible");
-    });
-
-    helpOverlay.addEventListener("click", event => {
-      if (event.target === helpOverlay) {
-        helpOverlay.classList.remove("visible");
-      }
-    });
-
-    startGame();
-  </script>
-</body>
-</html>`;
-
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=UTF-8",
   "Cache-Control": "public, max-age=3600"
@@ -1052,25 +34,33 @@ async function getWords(request) {
 
   datamuseUrl.searchParams.set(
     "sp",
-    letter + "????"
+    `${letter}????`
   );
 
-  datamuseUrl.searchParams.set("max", "500");
+  datamuseUrl.searchParams.set(
+    "max",
+    "500"
+  );
 
-  const response = await fetch(datamuseUrl.toString(), {
-    headers: {
-      "Accept": "application/json",
-      "User-Agent": "word-chain-cloudflare-worker"
-    },
-    cf: {
-      cacheEverything: true,
-      cacheTtl: 3600
+  const response = await fetch(
+    datamuseUrl.toString(),
+    {
+      headers: {
+        "Accept": "application/json",
+        "User-Agent":
+          "word-chain-cloudflare-worker"
+      },
+
+      cf: {
+        cacheEverything: true,
+        cacheTtl: 3600
+      }
     }
-  });
+  );
 
   if (!response.ok) {
     throw new Error(
-      "Datamuse API returned " + response.status
+      `Datamuse API returned ${response.status}`
     );
   }
 
@@ -1079,16 +69,16 @@ async function getWords(request) {
   const words = [
     ...new Set(
       data
-        .map(item => {
-          return String(item.word || "")
-            .toUpperCase();
-        })
-        .filter(word => {
-          return (
-            /^[A-Z]{5}$/.test(word) &&
-            word.startsWith(letter.toUpperCase())
-          );
-        })
+        .map(item =>
+          String(item.word || "")
+            .toUpperCase()
+        )
+        .filter(word =>
+          /^[A-Z]{5}$/.test(word) &&
+          word.startsWith(
+            letter.toUpperCase()
+          )
+        )
     )
   ];
 
@@ -1100,10 +90,13 @@ async function getWords(request) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     try {
+      /*
+        英単語検索API
+      */
       if (
         url.pathname === "/api/words" &&
         request.method === "GET"
@@ -1111,32 +104,56 @@ export default {
         return await getWords(request);
       }
 
-      if (url.pathname.startsWith("/api/")) {
+      /*
+        GET以外は許可しない
+      */
+      if (
+        url.pathname === "/api/words" &&
+        request.method !== "GET"
+      ) {
         return jsonResponse(
           {
-            error: "指定されたAPIはありません。"
+            error:
+              "このAPIではGETのみ使用できます。"
+          },
+          405
+        );
+      }
+
+      /*
+        存在しないAPI
+      */
+      if (
+        url.pathname.startsWith("/api/")
+      ) {
+        return jsonResponse(
+          {
+            error:
+              "指定されたAPIは見つかりません。"
           },
           404
         );
       }
 
-      return new Response(HTML, {
-        status: 200,
-        headers: {
-          "Content-Type":
-            "text/html; charset=UTF-8",
-          "Cache-Control":
-            "no-cache, no-store, must-revalidate"
-        }
-      });
+      /*
+        publicフォルダ内の静的ファイルを表示
+        / へのアクセスでは public/index.html が表示される
+      */
+      return env.ASSETS.fetch(request);
     } catch (error) {
       console.error(error);
 
-      if (url.pathname.startsWith("/api/")) {
+      /*
+        API通信中のエラー
+      */
+      if (
+        url.pathname.startsWith("/api/")
+      ) {
         return jsonResponse(
           {
             error:
               "英単語を取得できませんでした。",
+
             detail:
               error instanceof Error
                 ? error.message
@@ -1146,10 +163,14 @@ export default {
         );
       }
 
+      /*
+        静的ファイル表示中のエラー
+      */
       return new Response(
-        "ゲームを読み込めませんでした。",
+        "ページを読み込めませんでした。",
         {
           status: 500,
+
           headers: {
             "Content-Type":
               "text/plain; charset=UTF-8"
