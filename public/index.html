@@ -20,8 +20,6 @@
       --disabled: #242426;
       --yellow: #b59f3b;
       --green: #538d4e;
-      --blue: #4a7db8;
-      --orange: #ba7b38;
       --white: #ffffff;
       --muted: #a9a9aa;
       --error: #ff7675;
@@ -95,17 +93,6 @@
       flex: 1;
       flex-direction: column;
       align-items: center;
-    }
-
-    .level-badge {
-      display: none;
-      margin-bottom: 5px;
-      padding: 4px 12px;
-      border-radius: 20px;
-      background: #2f2f31;
-      color: var(--white);
-      font-size: 12px;
-      font-weight: 700;
     }
 
     .status-panel {
@@ -215,6 +202,11 @@
       font-weight: 800;
       cursor: pointer;
       user-select: none;
+      transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        opacity 0.15s ease,
+        transform 0.1s ease;
     }
 
     .key.large {
@@ -230,11 +222,16 @@
       background: var(--yellow);
     }
 
+    .key:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
     .key:disabled {
       background: var(--disabled);
       color: #555558;
       opacity: 0.42;
       cursor: not-allowed;
+      transform: none;
     }
 
     .restart-button {
@@ -272,65 +269,14 @@
       border: 1px solid #565758;
       border-radius: 12px;
       background: var(--panel);
-      box-shadow: 0 12px 45px rgba(0, 0, 0, 0.5);
+      box-shadow:
+        0 12px 45px
+        rgba(0, 0, 0, 0.5);
     }
 
     .dialog h2 {
       margin: 0 0 8px;
       text-align: center;
-    }
-
-    .dialog-intro {
-      margin: 0 0 18px;
-      color: #d7d7d7;
-      text-align: center;
-      line-height: 1.6;
-    }
-
-    .level-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .level-button {
-      width: 100%;
-      padding: 16px;
-      border: 2px solid transparent;
-      border-radius: 10px;
-      color: var(--white);
-      text-align: left;
-      cursor: pointer;
-      transition: transform 0.15s ease;
-    }
-
-    .level-button:hover {
-      transform: translateY(-2px);
-    }
-
-    .level-button.beginner {
-      background: var(--green);
-    }
-
-    .level-button.intermediate {
-      background: var(--blue);
-    }
-
-    .level-button.advanced {
-      background: var(--orange);
-    }
-
-    .level-name {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 20px;
-      font-weight: 800;
-    }
-
-    .level-description {
-      display: block;
-      font-size: 13px;
-      line-height: 1.5;
-      opacity: 0.95;
     }
 
     .dialog p {
@@ -373,6 +319,10 @@
         padding: 7px 7px 12px;
       }
 
+      .status-panel {
+        min-height: 100px;
+      }
+
       .tile {
         width: min(15.8vw, 58px);
         height: min(15.8vw, 58px);
@@ -408,12 +358,14 @@
         id="menuButton"
         class="icon-button"
         type="button"
-        aria-label="難易度を選び直す"
+        aria-label="最初から遊ぶ"
       >
         ☰
       </button>
 
-      <h1 class="title">WORD CHAIN</h1>
+      <h1 class="title">
+        WORD CHAIN
+      </h1>
 
       <button
         id="helpButton"
@@ -426,11 +378,6 @@
     </header>
 
     <main class="game-area">
-      <div
-        id="levelBadge"
-        class="level-badge"
-      ></div>
-
       <section class="status-panel">
         <div class="required-label">
           次の単語の頭文字
@@ -461,7 +408,7 @@
         class="restart-button"
         type="button"
       >
-        同じ難易度でもう一度
+        もう一度遊ぶ
       </button>
 
       <section
@@ -473,66 +420,6 @@
   </div>
 
   <div
-    id="levelOverlay"
-    class="overlay visible"
-  >
-    <div class="dialog">
-      <h2>難易度を選択</h2>
-
-      <p class="dialog-intro">
-        挑戦する英単語のレベルを選んでください。
-      </p>
-
-      <div class="level-list">
-        <button
-          class="level-button beginner"
-          data-level="beginner"
-          type="button"
-        >
-          <span class="level-name">
-            初級
-          </span>
-
-          <span class="level-description">
-            英検4〜5級レベル相当<br>
-            基本的でよく使われる英単語
-          </span>
-        </button>
-
-        <button
-          class="level-button intermediate"
-          data-level="intermediate"
-          type="button"
-        >
-          <span class="level-name">
-            中級
-          </span>
-
-          <span class="level-description">
-            英検3級レベル相当<br>
-            学校や日常で使う標準的な英単語
-          </span>
-        </button>
-
-        <button
-          class="level-button advanced"
-          data-level="advanced"
-          type="button"
-        >
-          <span class="level-name">
-            上級
-          </span>
-
-          <span class="level-description">
-            英検準2級レベル相当<br>
-            少し難しい発展的な英単語
-          </span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div
     id="helpOverlay"
     class="overlay"
   >
@@ -540,20 +427,30 @@
       <h2>遊び方</h2>
 
       <p>
-        最初に難易度を選びます。
         表示された頭文字から始まる
-        5文字の英単語を入力してください。
+        5文字の英単語を入力します。
       </p>
 
       <p>
-        2語目以降は、選択した難易度の英単語から
+        2語目以降は、ウェブから取得した英単語の中から、
         正解候補が内部で2〜3語に絞られます。
       </p>
 
       <p>
-        候補に使われている文字だけが
-        キーボードに残りますが、
-        正しい文字の順番までは案内されません。
+        候補の英単語そのものは表示されません。
+        候補に使われている英文字だけが押せます。
+      </p>
+
+      <p>
+        ただし、文字の正しい位置や順番までは
+        案内されません。表示された文字を使って、
+        自分で英単語を考えてください。
+      </p>
+
+      <p>
+        黄色になった文字が、
+        次の英単語の頭文字です。
+        6個つなげるとゲームクリアです。
       </p>
 
       <button
@@ -572,22 +469,11 @@
     const ROWS = 6;
     const COLUMNS = 5;
 
+    /*
+      2語目以降の内部候補数
+    */
     const MIN_HIDDEN_WORDS = 2;
     const MAX_HIDDEN_WORDS = 3;
-
-    const LEVELS = {
-      beginner: {
-        label: "初級｜英検4〜5級相当"
-      },
-
-      intermediate: {
-        label: "中級｜英検3級相当"
-      },
-
-      advanced: {
-        label: "上級｜英検準2級相当"
-      }
-    };
 
     const KEYBOARD_ROWS = [
       [
@@ -618,33 +504,37 @@
       document.getElementById("keyboard");
 
     const requiredLetterElement =
-      document.getElementById("requiredLetter");
+      document.getElementById(
+        "requiredLetter"
+      );
 
     const messageElement =
       document.getElementById("message");
 
     const restartButton =
-      document.getElementById("restartButton");
+      document.getElementById(
+        "restartButton"
+      );
 
     const menuButton =
-      document.getElementById("menuButton");
+      document.getElementById(
+        "menuButton"
+      );
 
     const helpButton =
-      document.getElementById("helpButton");
+      document.getElementById(
+        "helpButton"
+      );
 
     const helpOverlay =
-      document.getElementById("helpOverlay");
-
-    const levelOverlay =
-      document.getElementById("levelOverlay");
-
-    const levelBadge =
-      document.getElementById("levelBadge");
+      document.getElementById(
+        "helpOverlay"
+      );
 
     const closeHelp =
-      document.getElementById("closeHelp");
-
-    let selectedLevel = "";
+      document.getElementById(
+        "closeHelp"
+      );
 
     let currentRow = 0;
     let currentInput = "";
@@ -686,23 +576,34 @@
 
     function randomInteger(min, max) {
       return Math.floor(
-        Math.random() * (max - min + 1)
+        Math.random() *
+        (max - min + 1)
       ) + min;
     }
 
-    function setMessage(text, type = "") {
+    function setMessage(
+      text,
+      type = ""
+    ) {
       messageElement.textContent = text;
-      messageElement.className = "message";
+      messageElement.className =
+        "message";
 
       if (type) {
-        messageElement.classList.add(type);
+        messageElement.classList.add(
+          type
+        );
       }
     }
 
     function createBoard() {
       boardElement.innerHTML = "";
 
-      for (let row = 0; row < ROWS; row++) {
+      for (
+        let row = 0;
+        row < ROWS;
+        row++
+      ) {
         const rowElement =
           document.createElement("div");
 
@@ -718,7 +619,10 @@
             document.createElement("div");
 
           tile.className = "tile";
-          tile.dataset.row = String(row);
+
+          tile.dataset.row =
+            String(row);
+
           tile.dataset.column =
             String(column);
 
@@ -743,22 +647,33 @@
 
         row.forEach(keyValue => {
           const button =
-            document.createElement("button");
+            document.createElement(
+              "button"
+            );
 
           button.type = "button";
           button.className = "key";
-          button.dataset.key = keyValue;
+          button.dataset.key =
+            keyValue;
 
           if (keyValue === "ENTER") {
-            button.textContent = "ENTER";
-            button.classList.add("large");
+            button.textContent =
+              "ENTER";
+
+            button.classList.add(
+              "large"
+            );
           } else if (
             keyValue === "BACKSPACE"
           ) {
             button.textContent = "⌫";
-            button.classList.add("large");
+
+            button.classList.add(
+              "large"
+            );
           } else {
-            button.textContent = keyValue;
+            button.textContent =
+              keyValue;
           }
 
           button.addEventListener(
@@ -768,7 +683,9 @@
             }
           );
 
-          rowElement.appendChild(button);
+          rowElement.appendChild(
+            button
+          );
         });
 
         keyboardElement.appendChild(
@@ -796,7 +713,10 @@
         column++
       ) {
         const tile =
-          getTile(currentRow, column);
+          getTile(
+            currentRow,
+            column
+          );
 
         if (!tile) {
           continue;
@@ -829,6 +749,7 @@
 
     function finishLoading() {
       loading = false;
+
       updateKeyboardAvailability();
     }
 
@@ -836,27 +757,19 @@
       const upperLetter =
         letter.toUpperCase();
 
-      const cacheKey =
-        selectedLevel +
-        ":" +
-        upperLetter;
-
-      if (cache.has(cacheKey)) {
-        return cache.get(cacheKey);
+      if (cache.has(upperLetter)) {
+        return cache.get(
+          upperLetter
+        );
       }
 
-      const response =
-        await fetch(
-          API_URL +
-            "?letter=" +
-            encodeURIComponent(
-              upperLetter
-            ) +
-            "&level=" +
-            encodeURIComponent(
-              selectedLevel
-            )
-        );
+      const response = await fetch(
+        API_URL +
+          "?letter=" +
+          encodeURIComponent(
+            upperLetter
+          )
+      );
 
       const data =
         await response
@@ -875,6 +788,7 @@
           ? data.words
               .map(word =>
                 String(word)
+                  .trim()
                   .toUpperCase()
               )
               .filter(word =>
@@ -887,18 +801,21 @@
               )
           : [];
 
-      const uniqueWords =
-        [...new Set(words)];
+      const uniqueWords = [
+        ...new Set(words)
+      ];
 
       cache.set(
-        cacheKey,
+        upperLetter,
         uniqueWords
       );
 
       return uniqueWords;
     }
 
-    async function getAvailableWords(letter) {
+    async function getAvailableWords(
+      letter
+    ) {
       const words =
         await fetchWords(letter);
 
@@ -908,6 +825,10 @@
       );
     }
 
+    /*
+      入力された単語に含まれる文字の中から、
+      次の頭文字として利用できる文字を探す。
+    */
     async function findPlayableLetter(
       letters
     ) {
@@ -940,6 +861,11 @@
       return null;
     }
 
+    /*
+      ウェブから取得した単語の中から、
+      画面には表示しない候補を
+      2〜3語だけ選択する。
+    */
     async function prepareHiddenCandidates(
       letter
     ) {
@@ -979,6 +905,12 @@
       return true;
     }
 
+    /*
+      候補2〜3語に含まれている
+      英文字をすべて取得する。
+
+      入力位置による絞り込みは行わない。
+    */
     function getAllowedLettersForRound() {
       if (!chainStarted) {
         return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -988,19 +920,15 @@
       const allowedLetters =
         new Set();
 
-      hiddenCandidates.forEach(
-        word => {
-          word
-            .split("")
-            .forEach(letter => {
-              allowedLetters.add(letter);
-            });
-        }
-      );
+      hiddenCandidates.forEach(word => {
+        word
+          .split("")
+          .forEach(letter => {
+            allowedLetters.add(letter);
+          });
+      });
 
-      return [
-        ...allowedLetters
-      ];
+      return [...allowedLetters];
     }
 
     function updateKeyboardAvailability() {
@@ -1013,9 +941,7 @@
           const key =
             button.dataset.key;
 
-          if (
-            key === "BACKSPACE"
-          ) {
+          if (key === "BACKSPACE") {
             button.disabled =
               loading ||
               gameFinished ||
@@ -1034,9 +960,7 @@
             return;
           }
 
-          if (
-            !/^[A-Z]$/.test(key)
-          ) {
+          if (!/^[A-Z]$/.test(key)) {
             return;
           }
 
@@ -1050,25 +974,34 @@
             return;
           }
 
-          if (
-            !chainStarted &&
-            currentInput.length === 0
-          ) {
+          /*
+            すべてのラウンドで、
+            1文字目は指定された頭文字だけ押せる。
+          */
+          if (currentInput.length === 0) {
             button.disabled =
               key !== requiredLetter;
 
             return;
           }
 
+          /*
+            最初の単語の2文字目以降は自由。
+          */
           if (!chainStarted) {
             button.disabled = false;
             return;
           }
 
+          /*
+            2語目以降は、候補2〜3語で
+            使用されている文字だけ押せる。
+
+            正しい位置や順番による
+            絞り込みはしない。
+          */
           button.disabled =
-            !allowedLetters.includes(
-              key
-            );
+            !allowedLetters.includes(key);
         });
     }
 
@@ -1088,8 +1021,7 @@
         );
       }
 
-      requiredLetter =
-        firstLetter;
+      requiredLetter = firstLetter;
 
       requiredLetterElement.textContent =
         requiredLetter;
@@ -1117,16 +1049,27 @@
       const upperLetter =
         letter.toUpperCase();
 
+      /*
+        すべてのラウンドで、
+        1文字目は指定された頭文字にする。
+      */
       if (
-        !chainStarted &&
         currentInput.length === 0 &&
-        upperLetter !==
-          requiredLetter
+        upperLetter !== requiredLetter
       ) {
         return;
       }
 
-      if (chainStarted) {
+      /*
+        2語目以降は候補単語内で
+        使用されている文字かだけ確認する。
+
+        文字の位置や正しい順番は確認しない。
+      */
+      if (
+        chainStarted &&
+        currentInput.length > 0
+      ) {
         const allowedLetters =
           getAllowedLettersForRound();
 
@@ -1139,8 +1082,7 @@
         }
       }
 
-      currentInput +=
-        upperLetter;
+      currentInput += upperLetter;
 
       updateCurrentRow();
     }
@@ -1155,12 +1097,47 @@
       }
 
       currentInput =
-        currentInput.slice(
-          0,
-          -1
-        );
+        currentInput.slice(0, -1);
 
       updateCurrentRow();
+    }
+
+    function markKeyboardLetter(
+      letter,
+      className
+    ) {
+      const button =
+        keyboardElement.querySelector(
+          '.key[data-key="' +
+            letter +
+            '"]'
+        );
+
+      if (!button) {
+        return;
+      }
+
+      if (className === "selected") {
+        button.classList.remove(
+          "used"
+        );
+
+        button.classList.add(
+          "selected"
+        );
+
+        return;
+      }
+
+      if (
+        !button.classList.contains(
+          "selected"
+        )
+      ) {
+        button.classList.add(
+          className
+        );
+      }
     }
 
     function shakeCurrentRow() {
@@ -1189,6 +1166,14 @@
           },
           {
             transform:
+              "translateX(-5px)"
+          },
+          {
+            transform:
+              "translateX(5px)"
+          },
+          {
+            transform:
               "translateX(0)"
           }
         ],
@@ -1210,6 +1195,12 @@
         currentInput.length !==
         COLUMNS
       ) {
+        setMessage(
+          "5文字の英単語を入力してください。",
+          "error"
+        );
+
+        shakeCurrentRow();
         return;
       }
 
@@ -1219,7 +1210,9 @@
         )
       ) {
         setMessage(
-          "指定された頭文字から始めてください。",
+          "「" +
+            requiredLetter +
+            "」から始めてください。",
           "error"
         );
 
@@ -1241,6 +1234,11 @@
         return;
       }
 
+      /*
+        2語目以降は、
+        内部で選ばれた2〜3語のどれかと
+        完全一致した場合のみ正解。
+      */
       if (
         chainStarted &&
         !hiddenCandidates.includes(
@@ -1267,9 +1265,9 @@
           );
 
         /*
-          難易度の対象外だった場合は、
-          メッセージを表示せず、
-          入力した行を揺らすだけにする。
+          難易度ではなく、
+          ウェブ検索結果に存在する
+          5文字英単語か確認する。
         */
         if (
           !validWords.includes(
@@ -1278,59 +1276,81 @@
         ) {
           finishLoading();
 
-          setMessage("", "");
+          setMessage(
+            "有効な5文字英単語ではありません。",
+            "error"
+          );
 
           shakeCurrentRow();
-
           return;
         }
 
         const selectedWord =
           currentInput;
 
-        usedWords.push(
-          selectedWord
-        );
-
+        /*
+          次の頭文字は、
+          今回入力した単語に含まれる文字から選ぶ。
+        */
         const possibleLetters = [
           ...new Set(
             selectedWord.split("")
           )
         ];
 
-        let nextLetter =
+        const nextLetter =
           await findPlayableLetter(
             possibleLetters
           );
 
-        if (!nextLetter) {
-          nextLetter =
-            await findPlayableLetter(
-              COMMON_START_LETTERS
+        /*
+          6語目を入力した時点では、
+          次の単語を準備する必要はない。
+        */
+        const isLastRow =
+          currentRow === ROWS - 1;
+
+        if (
+          !isLastRow &&
+          !nextLetter
+        ) {
+          finishLoading();
+
+          setMessage(
+            "この単語から続けられる英単語が見つかりません。",
+            "error"
+          );
+
+          shakeCurrentRow();
+          return;
+        }
+
+        if (!isLastRow) {
+          const prepared =
+            await prepareHiddenCandidates(
+              nextLetter
             );
+
+          if (!prepared) {
+            finishLoading();
+
+            setMessage(
+              "この単語から続けられる英単語が見つかりません。",
+              "error"
+            );
+
+            shakeCurrentRow();
+            return;
+          }
         }
 
-        if (!nextLetter) {
-          finishGame(
-            "続けられる英単語が見つかりませんでした。"
-          );
+        usedWords.push(
+          selectedWord
+        );
 
-          return;
-        }
-
-        const prepared =
-          await prepareHiddenCandidates(
-            nextLetter
-          );
-
-        if (!prepared) {
-          finishGame(
-            "続けられる英単語が見つかりませんでした。"
-          );
-
-          return;
-        }
-
+        /*
+          確定した行を着色する。
+        */
         for (
           let column = 0;
           column < COLUMNS;
@@ -1350,13 +1370,24 @@
           );
 
           if (
+            !isLastRow &&
             letter === nextLetter
           ) {
             tile.classList.add(
               "selected-letter"
             );
+
+            markKeyboardLetter(
+              letter,
+              "selected"
+            );
           } else {
             tile.classList.add(
+              "used"
+            );
+
+            markKeyboardLetter(
+              letter,
               "used"
             );
           }
@@ -1365,11 +1396,9 @@
         currentRow += 1;
         currentInput = "";
 
-        if (
-          currentRow >= ROWS
-        ) {
+        if (currentRow >= ROWS) {
           finishGame(
-            "ゲームクリア！",
+            "ゲームクリア！6個の英単語をつなげました。",
             true
           );
 
@@ -1377,15 +1406,12 @@
         }
 
         chainStarted = true;
-
-        requiredLetter =
-          nextLetter;
+        requiredLetter = nextLetter;
 
         requiredLetterElement.textContent =
           requiredLetter;
 
         finishLoading();
-
         updateCurrentRow();
 
         setMessage(
@@ -1413,9 +1439,7 @@
         return;
       }
 
-      if (
-        key === "BACKSPACE"
-      ) {
+      if (key === "BACKSPACE") {
         removeLetter();
         return;
       }
@@ -1466,14 +1490,6 @@
       restartButton.style.display =
         "none";
 
-      levelBadge.textContent =
-        LEVELS[
-          selectedLevel
-        ].label;
-
-      levelBadge.style.display =
-        "block";
-
       createBoard();
       createKeyboard();
 
@@ -1489,25 +1505,76 @@
       }
     }
 
-    document
-      .querySelectorAll(
-        ".level-button"
-      )
-      .forEach(button => {
-        button.addEventListener(
-          "click",
-          () => {
-            selectedLevel =
-              button.dataset.level;
+    document.addEventListener(
+      "keydown",
+      event => {
+        if (
+          helpOverlay.classList.contains(
+            "visible"
+          ) ||
+          event.ctrlKey ||
+          event.altKey ||
+          event.metaKey
+        ) {
+          return;
+        }
 
-            levelOverlay.classList.remove(
-              "visible"
+        const key =
+          event.key.toUpperCase();
+
+        if (key === "ENTER") {
+          event.preventDefault();
+
+          const button =
+            keyboardElement.querySelector(
+              '.key[data-key="ENTER"]'
             );
 
-            startGame();
+          if (
+            button &&
+            !button.disabled
+          ) {
+            submitWord();
           }
-        );
-      });
+
+          return;
+        }
+
+        if (key === "BACKSPACE") {
+          event.preventDefault();
+
+          const button =
+            keyboardElement.querySelector(
+              '.key[data-key="BACKSPACE"]'
+            );
+
+          if (
+            button &&
+            !button.disabled
+          ) {
+            removeLetter();
+          }
+
+          return;
+        }
+
+        if (/^[A-Z]$/.test(key)) {
+          const button =
+            keyboardElement.querySelector(
+              '.key[data-key="' +
+                key +
+                '"]'
+            );
+
+          if (
+            button &&
+            !button.disabled
+          ) {
+            addLetter(key);
+          }
+        }
+      }
+    );
 
     restartButton.addEventListener(
       "click",
@@ -1517,9 +1584,14 @@
     menuButton.addEventListener(
       "click",
       () => {
-        levelOverlay.classList.add(
-          "visible"
-        );
+        const shouldRestart =
+          window.confirm(
+            "最初からゲームをやり直しますか？"
+          );
+
+        if (shouldRestart) {
+          startGame();
+        }
       }
     );
 
@@ -1545,8 +1617,7 @@
       "click",
       event => {
         if (
-          event.target ===
-          helpOverlay
+          event.target === helpOverlay
         ) {
           helpOverlay.classList.remove(
             "visible"
@@ -1555,90 +1626,7 @@
       }
     );
 
-    document.addEventListener(
-      "keydown",
-      event => {
-        if (
-          !selectedLevel ||
-          levelOverlay.classList.contains(
-            "visible"
-          ) ||
-          helpOverlay.classList.contains(
-            "visible"
-          )
-        ) {
-          return;
-        }
-
-        const key =
-          event.key.toUpperCase();
-
-        if (
-          key === "ENTER"
-        ) {
-          event.preventDefault();
-
-          const button =
-            keyboardElement.querySelector(
-              '.key[data-key="ENTER"]'
-            );
-
-          if (
-            button &&
-            !button.disabled
-          ) {
-            submitWord();
-          }
-
-          return;
-        }
-
-        if (
-          key === "BACKSPACE"
-        ) {
-          event.preventDefault();
-
-          const button =
-            keyboardElement.querySelector(
-              '.key[data-key="BACKSPACE"]'
-            );
-
-          if (
-            button &&
-            !button.disabled
-          ) {
-            removeLetter();
-          }
-
-          return;
-        }
-
-        if (
-          /^[A-Z]$/.test(key)
-        ) {
-          const button =
-            keyboardElement.querySelector(
-              '.key[data-key="' +
-                key +
-                '"]'
-            );
-
-          if (
-            button &&
-            !button.disabled
-          ) {
-            addLetter(key);
-          }
-        }
-      }
-    );
-
-    createBoard();
-    createKeyboard();
-
-    setMessage(
-      "難易度を選択してください。"
-    );
+    startGame();
   </script>
 </body>
 </html>
