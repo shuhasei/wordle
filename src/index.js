@@ -10,65 +10,11 @@ function jsonResponse(data, status = 200) {
   });
 }
 
-function getFrequency(item) {
-  const tags = Array.isArray(item.tags)
-    ? item.tags
-    : [];
-
-  const frequencyTag = tags.find(tag =>
-    String(tag).startsWith("f:")
-  );
-
-  if (!frequencyTag) {
-    return 0;
-  }
-
-  const value = Number(
-    String(frequencyTag).replace("f:", "")
-  );
-
-  return Number.isFinite(value)
-    ? value
-    : 0;
-}
-
-function filterByLevel(words, level) {
-  if (level === "beginner") {
-    return words.filter(item =>
-      item.frequency >= 3.5
-    );
-  }
-
-  if (level === "intermediate") {
-    return words.filter(item =>
-      item.frequency >= 1.5 &&
-      item.frequency < 5
-    );
-  }
-
-  if (level === "advanced") {
-    return words.filter(item =>
-      item.frequency >= 0 &&
-      item.frequency < 2.5
-    );
-  }
-
-  return words;
-}
-
 async function getWords(request) {
-  const requestUrl =
-    new URL(request.url);
+  const requestUrl = new URL(request.url);
 
   const letter = (
     requestUrl.searchParams.get("letter") || ""
-  )
-    .trim()
-    .toLowerCase();
-
-  const level = (
-    requestUrl.searchParams.get("level") ||
-    "beginner"
   )
     .trim()
     .toLowerCase();
@@ -83,50 +29,32 @@ async function getWords(request) {
     );
   }
 
-  if (
-    ![
-      "beginner",
-      "intermediate",
-      "advanced"
-    ].includes(level)
-  ) {
-    return jsonResponse(
-      {
-        error:
-          "難易度の指定が正しくありません。"
-      },
-      400
-    );
-  }
+  const datamuseUrl = new URL(
+    "https://api.datamuse.com/words"
+  );
 
-  const datamuseUrl =
-    new URL(
-      "https://api.datamuse.com/words"
-    );
-
+  /*
+    指定された英文字から始まる
+    5文字の英単語を検索する。
+  */
   datamuseUrl.searchParams.set(
     "sp",
     `${letter}????`
   );
 
+  /*
+    取得できる候補数を増やす。
+  */
   datamuseUrl.searchParams.set(
     "max",
     "1000"
-  );
-
-  /*
-    f = 単語の使用頻度情報
-  */
-  datamuseUrl.searchParams.set(
-    "md",
-    "f"
   );
 
   const response = await fetch(
     datamuseUrl.toString(),
     {
       headers: {
-        "Accept": "application/json",
+        Accept: "application/json",
         "User-Agent":
           "word-chain-cloudflare-worker"
       },
@@ -144,86 +72,44 @@ async function getWords(request) {
     );
   }
 
-  const data =
-    await response.json();
-
-  const normalizedWords =
-    data
-      .map(item => ({
-        word: String(
-          item.word || ""
-        ).toUpperCase(),
-
-        frequency:
-          getFrequency(item)
-      }))
-      .filter(item =>
-        /^[A-Z]{5}$/.test(item.word) &&
-        item.word.startsWith(
-          letter.toUpperCase()
-        )
-      );
-
-  const uniqueMap =
-    new Map();
-
-  normalizedWords.forEach(item => {
-    if (
-      !uniqueMap.has(item.word) ||
-      uniqueMap.get(item.word).frequency <
-        item.frequency
-    ) {
-      uniqueMap.set(
-        item.word,
-        item
-      );
-    }
-  });
-
-  const uniqueWords =
-    [...uniqueMap.values()];
-
-  let filteredWords =
-    filterByLevel(
-      uniqueWords,
-      level
-    );
+  const data = await response.json();
 
   /*
-    対象レベルの単語が少なすぎるときは、
-    ゲームが止まらないように範囲を広げる。
+    半角英字だけで構成された
+    5文字英単語に限定する。
   */
-  if (filteredWords.length < 3) {
-    filteredWords = uniqueWords;
-  }
-
-  filteredWords.sort(
-    (a, b) =>
-      b.frequency - a.frequency
-  );
+  const words = [
+    ...new Set(
+      data
+        .map(item =>
+          String(item.word || "")
+            .trim()
+            .toUpperCase()
+        )
+        .filter(word =>
+          /^[A-Z]{5}$/.test(word) &&
+          word.startsWith(
+            letter.toUpperCase()
+          )
+        )
+    )
+  ];
 
   return jsonResponse({
-    letter:
-      letter.toUpperCase(),
-
-    level,
-
-    count:
-      filteredWords.length,
-
-    words:
-      filteredWords.map(
-        item => item.word
-      )
+    letter: letter.toUpperCase(),
+    count: words.length,
+    words
   });
 }
 
 export default {
   async fetch(request, env) {
-    const url =
-      new URL(request.url);
+    const url = new URL(request.url);
 
     try {
+      /*
+        英単語取得API
+      */
       if (
         url.pathname === "/api/words" &&
         request.method === "GET"
@@ -231,6 +117,9 @@ export default {
         return await getWords(request);
       }
 
+      /*
+        GET以外は受け付けない。
+      */
       if (
         url.pathname === "/api/words" &&
         request.method !== "GET"
@@ -244,9 +133,10 @@ export default {
         );
       }
 
-      if (
-        url.pathname.startsWith("/api/")
-      ) {
+      /*
+        存在しないAPI
+      */
+      if (url.pathname.startsWith("/api/")) {
         return jsonResponse(
           {
             error:
@@ -256,13 +146,14 @@ export default {
         );
       }
 
+      /*
+        publicフォルダのファイルを表示する。
+      */
       return env.ASSETS.fetch(request);
     } catch (error) {
       console.error(error);
 
-      if (
-        url.pathname.startsWith("/api/")
-      ) {
+      if (url.pathname.startsWith("/api/")) {
         return jsonResponse(
           {
             error:
@@ -281,6 +172,7 @@ export default {
         "ページを読み込めませんでした。",
         {
           status: 500,
+
           headers: {
             "Content-Type":
               "text/plain; charset=UTF-8"
