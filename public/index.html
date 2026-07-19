@@ -419,19 +419,23 @@
       </p>
 
       <p>
-        2語目以降は、ウェブで検索した英単語から
-        使える単語が内部で2〜3語に絞られます。
+        2語目以降は、ウェブ検索した英単語から、
+        内部で正解候補が2〜3語に絞られます。
       </p>
 
       <p>
-        候補の単語は表示されません。
-        入力した文字につながらないキーは暗くなり、
-        押せなくなります。
+        候補の単語自体は表示されません。
+        候補に使われている英文字だけが押せます。
       </p>
 
       <p>
-        黄色になった文字が、
-        次の単語の頭文字です。
+        ただし、入力する順番までは案内されません。
+        間違った並びも入力できるため、
+        単語を自分で考える必要があります。
+      </p>
+
+      <p>
+        黄色になった文字が次の頭文字です。
         6個つなげるとゲームクリアです。
       </p>
 
@@ -507,18 +511,9 @@
     let requiredLetter = "";
 
     let usedWords = [];
-
-    /*
-      画面には表示しない2〜3語の候補
-    */
     let hiddenCandidates = [];
 
-    /*
-      false：最初の英単語
-      true：2語目以降
-    */
     let chainStarted = false;
-
     let gameFinished = false;
     let loading = false;
 
@@ -567,11 +562,7 @@
     function createBoard() {
       boardElement.innerHTML = "";
 
-      for (
-        let row = 0;
-        row < ROWS;
-        row++
-      ) {
+      for (let row = 0; row < ROWS; row++) {
         const rowElement =
           document.createElement("div");
 
@@ -754,10 +745,6 @@
       );
     }
 
-    /*
-      次の頭文字として使える文字を探す。
-      2語以上の候補がある文字だけを採用する。
-    */
     async function findPlayableLetter(
       letters
     ) {
@@ -786,10 +773,6 @@
       return null;
     }
 
-    /*
-      ウェブ検索結果から、
-      表示しない候補を2〜3語だけ作る。
-    */
     async function prepareHiddenCandidates(
       letter
     ) {
@@ -829,54 +812,32 @@
     }
 
     /*
-      現在入力している文字列に続く、
-      次に押せる文字を取得する。
+      候補2〜3語で使われている
+      すべての文字を取得する。
+
+      入力位置や並び順では絞り込まない。
     */
-    function getAllowedNextLetters() {
-      /*
-        最初の英単語は自由入力。
-        ただし先頭文字は別の処理で制限する。
-      */
+    function getAllowedLettersForRound() {
       if (!chainStarted) {
         return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
           .split("");
-      }
-
-      if (
-        hiddenCandidates.length === 0
-      ) {
-        return [];
       }
 
       const allowedLetters =
         new Set();
 
       hiddenCandidates.forEach(word => {
-        if (
-          word.startsWith(currentInput) &&
-          currentInput.length < COLUMNS
-        ) {
-          const nextLetter =
-            word[currentInput.length];
-
-          if (nextLetter) {
-            allowedLetters.add(nextLetter);
-          }
-        }
+        word.split("").forEach(letter => {
+          allowedLetters.add(letter);
+        });
       });
 
       return [...allowedLetters];
     }
 
-    function isCompleteHiddenCandidate() {
-      return hiddenCandidates.includes(
-        currentInput
-      );
-    }
-
     function updateKeyboardAvailability() {
       const allowedLetters =
-        getAllowedNextLetters();
+        getAllowedLettersForRound();
 
       document
         .querySelectorAll(".key")
@@ -894,20 +855,10 @@
           }
 
           if (key === "ENTER") {
-            if (chainStarted) {
-              button.disabled =
-                loading ||
-                gameFinished ||
-                currentInput.length !==
-                  COLUMNS ||
-                !isCompleteHiddenCandidate();
-            } else {
-              button.disabled =
-                loading ||
-                gameFinished ||
-                currentInput.length !==
-                  COLUMNS;
-            }
+            button.disabled =
+              loading ||
+              gameFinished ||
+              currentInput.length !== COLUMNS;
 
             return;
           }
@@ -919,16 +870,15 @@
           if (
             loading ||
             gameFinished ||
-            currentInput.length >=
-              COLUMNS
+            currentInput.length >= COLUMNS
           ) {
             button.disabled = true;
             return;
           }
 
           /*
-            最初の英単語の1文字目は、
-            指定された頭文字だけ押せる。
+            1語目の最初の文字だけ
+            指定された頭文字に制限する。
           */
           if (
             !chainStarted &&
@@ -941,7 +891,7 @@
           }
 
           /*
-            最初の英単語の2文字目以降は自由。
+            1語目の2文字目以降は自由。
           */
           if (!chainStarted) {
             button.disabled = false;
@@ -950,7 +900,10 @@
 
           /*
             2語目以降は、
-            2〜3語の隠し候補につながる文字だけ押せる。
+            候補2〜3語に含まれる文字だけ押せる。
+
+            文字の位置や順番による
+            絞り込みは行わない。
           */
           button.disabled =
             !allowedLetters.includes(key);
@@ -992,8 +945,7 @@
       if (
         loading ||
         gameFinished ||
-        currentInput.length >=
-          COLUMNS
+        currentInput.length >= COLUMNS
       ) {
         return;
       }
@@ -1001,9 +953,6 @@
       const upperLetter =
         letter.toUpperCase();
 
-      /*
-        1語目の先頭文字を制限する。
-      */
       if (
         !chainStarted &&
         currentInput.length === 0 &&
@@ -1022,11 +971,13 @@
 
       /*
         2語目以降は、
-        隠し候補につながらない文字を拒否する。
+        候補2〜3語に含まれる文字かだけを確認する。
+
+        入力位置や正しい順番までは確認しない。
       */
       if (chainStarted) {
         const allowedLetters =
-          getAllowedNextLetters();
+          getAllowedLettersForRound();
 
         if (
           !allowedLetters.includes(
@@ -1179,7 +1130,8 @@
 
       /*
         2語目以降は、
-        内部の2〜3語に含まれるか確認する。
+        内部候補2〜3語のどれかと
+        完全一致した場合だけ正解。
       */
       if (
         chainStarted &&
@@ -1188,7 +1140,7 @@
         )
       ) {
         setMessage(
-          "押せる文字を使って単語を完成させてください。",
+          "その英単語は今回の候補ではありません。",
           "error"
         );
 
@@ -1206,10 +1158,6 @@
             requiredLetter
           );
 
-        /*
-          1語目もウェブ検索結果にある
-          有効な単語か確認する。
-        */
         if (
           !validWords.includes(
             currentInput
@@ -1229,12 +1177,10 @@
         const selectedWord =
           currentInput;
 
-        usedWords.push(selectedWord);
+        usedWords.push(
+          selectedWord
+        );
 
-        /*
-          入力された単語に含まれる文字から、
-          次に使える頭文字を探す。
-        */
         const possibleLetters = [
           ...new Set(
             selectedWord.split("")
@@ -1246,10 +1192,6 @@
             possibleLetters
           );
 
-        /*
-          単語内の文字で続けられない場合のみ、
-          一般的な文字から探す。
-        */
         if (!nextLetter) {
           nextLetter =
             await findPlayableLetter(
@@ -1265,10 +1207,6 @@
           return;
         }
 
-        /*
-          次のラウンド用として、
-          ウェブ検索結果から2〜3語だけ選ぶ。
-        */
         const candidatesPrepared =
           await prepareHiddenCandidates(
             nextLetter
@@ -1282,9 +1220,6 @@
           return;
         }
 
-        /*
-          確定した行の文字を着色する。
-        */
         for (
           let column = 0;
           column < COLUMNS;
@@ -1346,18 +1281,13 @@
         requiredLetterElement.textContent =
           requiredLetter;
 
-        /*
-          次の行には頭文字を自動入力する。
-        */
-        currentInput = requiredLetter;
-
         finishLoading();
         updateCurrentRow();
 
         setMessage(
           "次は「" +
             requiredLetter +
-            "」から始まります。押せる文字を選んでください。",
+            "」から始まります。使える文字から英単語を考えてください。",
           "success"
         );
       } catch (error) {
