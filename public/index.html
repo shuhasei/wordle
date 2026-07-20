@@ -425,18 +425,23 @@
       <h2>遊び方</h2>
 
       <p>
-        表示された頭文字から始まる
+        表示された頭文字から始まる、
         5文字の英単語を入力します。
       </p>
 
       <p>
-        ウェブ検索で有効な5文字英単語と
-        判断された場合は正解です。
+        2語目以降は、ウェブ検索した英単語から
+        内部で2〜3語の候補が選ばれます。
       </p>
 
       <p>
-        2語目以降も、すべての英文字を使って
-        自由に単語を考えられます。
+        候補に含まれている英文字だけが押せますが、
+        正しい文字の位置や順番までは案内されません。
+      </p>
+
+      <p>
+        内部候補に入っていない単語でも、
+        ウェブ検索上の正しい5文字英単語なら正解です。
       </p>
 
       <p>
@@ -460,6 +465,9 @@
 
     const ROWS = 6;
     const COLUMNS = 5;
+
+    const MIN_HIDDEN_WORDS = 2;
+    const MAX_HIDDEN_WORDS = 3;
 
     const KEYBOARD_ROWS = [
       [
@@ -527,6 +535,7 @@
     let requiredLetter = "";
 
     let usedWords = [];
+    let hiddenCandidates = [];
 
     let gameFinished = false;
     let loading = false;
@@ -556,6 +565,13 @@
       }
 
       return result;
+    }
+
+    function randomInteger(min, max) {
+      return Math.floor(
+        Math.random() *
+        (max - min + 1)
+      ) + min;
     }
 
     function setMessage(
@@ -596,8 +612,10 @@
             document.createElement("div");
 
           tile.className = "tile";
+
           tile.dataset.row =
             String(row);
+
           tile.dataset.column =
             String(column);
 
@@ -724,7 +742,6 @@
 
     function finishLoading() {
       loading = false;
-
       updateKeyboardAvailability();
     }
 
@@ -822,7 +839,8 @@
           );
 
         if (
-          availableWords.length > 0
+          availableWords.length >=
+          MIN_HIDDEN_WORDS
         ) {
           return letter;
         }
@@ -831,7 +849,64 @@
       return null;
     }
 
+    async function prepareHiddenCandidates(
+      letter
+    ) {
+      const availableWords =
+        await getAvailableWords(
+          letter
+        );
+
+      if (
+        availableWords.length <
+        MIN_HIDDEN_WORDS
+      ) {
+        hiddenCandidates = [];
+        return false;
+      }
+
+      const maximumCount =
+        Math.min(
+          MAX_HIDDEN_WORDS,
+          availableWords.length
+        );
+
+      const candidateCount =
+        randomInteger(
+          MIN_HIDDEN_WORDS,
+          maximumCount
+        );
+
+      hiddenCandidates =
+        shuffle(
+          availableWords
+        ).slice(
+          0,
+          candidateCount
+        );
+
+      return true;
+    }
+
+    function getAllowedLettersForRound() {
+      const allowedLetters =
+        new Set();
+
+      hiddenCandidates.forEach(word => {
+        word
+          .split("")
+          .forEach(letter => {
+            allowedLetters.add(letter);
+          });
+      });
+
+      return [...allowedLetters];
+    }
+
     function updateKeyboardAvailability() {
+      const allowedLetters =
+        getAllowedLettersForRound();
+
       document
         .querySelectorAll(".key")
         .forEach(button => {
@@ -872,8 +947,8 @@
           }
 
           /*
-            単語の1文字目だけ、
-            指定された頭文字に制限する。
+            1文字目は指定された
+            頭文字だけ押せる。
           */
           if (currentInput.length === 0) {
             button.disabled =
@@ -883,9 +958,24 @@
           }
 
           /*
-            2文字目以降は全英文字を使用可能。
+            最初の単語では、
+            2文字目以降を自由入力できる。
           */
-          button.disabled = false;
+          if (currentRow === 0) {
+            button.disabled = false;
+            return;
+          }
+
+          /*
+            2語目以降は、
+            候補2〜3語で使用されている
+            英文字だけ押せる。
+
+            文字の位置や順番では
+            絞り込まない。
+          */
+          button.disabled =
+            !allowedLetters.includes(key);
         });
     }
 
@@ -933,11 +1023,36 @@
       const upperLetter =
         letter.toUpperCase();
 
+      /*
+        各単語の1文字目は、
+        指定された頭文字にする。
+      */
       if (
         currentInput.length === 0 &&
         upperLetter !== requiredLetter
       ) {
         return;
+      }
+
+      /*
+        2語目以降の2文字目からは、
+        候補2〜3語に含まれる文字だけ
+        入力できる。
+      */
+      if (
+        currentRow > 0 &&
+        currentInput.length > 0
+      ) {
+        const allowedLetters =
+          getAllowedLettersForRound();
+
+        if (
+          !allowedLetters.includes(
+            upperLetter
+          )
+        ) {
+          return;
+        }
       }
 
       currentInput += upperLetter;
@@ -1103,8 +1218,9 @@
           );
 
         /*
-          内部候補には限定せず、
-          ウェブ検索結果に存在すれば正解。
+          内部候補に入っているかではなく、
+          ウェブ検索結果にある
+          有効な5文字英単語かを確認する。
         */
         if (
           !validWords.includes(
@@ -1143,6 +1259,27 @@
             );
 
           if (!nextLetter) {
+            finishLoading();
+
+            setMessage(
+              "この単語から続けられる英単語が見つかりません。",
+              "error"
+            );
+
+            shakeCurrentRow();
+            return;
+          }
+
+          /*
+            次のラウンドで使う
+            内部候補を2〜3語準備する。
+          */
+          const prepared =
+            await prepareHiddenCandidates(
+              nextLetter
+            );
+
+          if (!prepared) {
             finishLoading();
 
             setMessage(
@@ -1224,7 +1361,7 @@
         setMessage(
           "次は「" +
             requiredLetter +
-            "」から始まります。",
+            "」から始まります。使える文字から単語を考えてください。",
           "success"
         );
       } catch (error) {
@@ -1285,6 +1422,7 @@
       requiredLetter = "";
 
       usedWords = [];
+      hiddenCandidates = [];
 
       gameFinished = false;
       loading = false;
